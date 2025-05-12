@@ -1,0 +1,29 @@
+services:
+  nginx:
+    build: requirements/nginx/.
+    container_name: nginx
+    ports:
+      - "81:81"
+    volumes:
+      - ./web:/var/www/html
+    networks:
+        - internal
+    depends_on:
+      - wp-php
+  wp-php:
+    build: requirements/wordpress/.
+    container_name: wp-php
+    volumes:
+      - ./web:/var/www/html
+    networks:
+        - internal
+  mariadb:
+    build: requirements/mariadb/.
+    container_name: mariadb
+    # volumes:
+    #   - ./web:/var/www/html
+    networks:
+        - internal
+networks:
+  internal:
+    driver: bridge
