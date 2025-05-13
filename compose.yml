@@ -3,16 +3,19 @@ services:
     build: requirements/nginx/.
     container_name: nginx
     ports:
-      - "81:81"
+      - "443:443"
     volumes:
       - ./web:/var/www/html
     networks:
         - internal
     depends_on:
       - wp-php
+      - mariadb
   wp-php:
     build: requirements/wordpress/.
     container_name: wp-php
+    depends_on:
+      - mariadb
     volumes:
       - ./web:/var/www/html
     networks:
@@ -20,8 +23,9 @@ services:
   mariadb:
     build: requirements/mariadb/.
     container_name: mariadb
-    # volumes:
-    #   - ./web:/var/www/html
+    env_file: .env
+    volumes:
+      - ./data:/var/lib/mysql
     networks:
         - internal
 networks:
