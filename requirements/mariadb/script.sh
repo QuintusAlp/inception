@@ -1,30 +1,30 @@
 #!/bin/bash
 set -e
 
-# Attendre que le dossier mysql soit prêt (uniquement à la première init)
-if [ ! -d "/var/lib/mysql/mysql" ]; then
-    echo "📦 Initialisation de la base de données MariaDB..."
+echo "🔸 SQL_DATABASE       = ${MYSQL_DATABASE}"
+echo "🔸 SQL_USER           = ${MYSQL_USER}"
+echo "🔸 SQL_PASSWORD       = ${MYSQL_PASSWORD}"
+echo "🔸 SQL_ROOT_PASSWORD  = ${MYSQL_ROOT_PASSWORD}"
+# 📁 Répertoire où la DB sera stockée
+DATABASE_DIR="/var/lib/mysql/${MYSQL_DATABASE}"
 
-    mariadb-install-db --user=mysql --basedir=/usr --datadir=/var/lib/mysql
+echo "📦 Vérification de l'existence de la base de données : ${MYSQL_DATABASE}..."
+# Si la DB n'existe pas encore (premier lancement)
+if [ ! -d "$DATABASE_DIR" ]; then
+    echo "🛠️  Base de données non trouvée. Initialisation en cours..."
 
-    # Génération du fichier init.sql
-    INIT_SQL_PATH="/etc/mysql/init.sql"
-    cat > "$INIT_SQL_PATH" <<EOF
-CREATE DATABASE IF NOT EXISTS \`${MYSQL_DATABASE}\`;
-CREATE USER IF NOT EXISTS '${MYSQL_USER}'@'%' IDENTIFIED BY '${MYSQL_PASSWORD}';
-GRANT ALL PRIVILEGES ON *.* TO '${MYSQL_USER}'@'%' WITH GRANT OPTION;
-FLUSH PRIVILEGES;
-EOF
+    echo "🚀 Démarrage temporaire du service MariaDB..."
+	service mysql start
 
-    # Démarrer MariaDB sans réseau
-    mysqld_safe --skip-networking &
-    sleep 5
-
-    echo "⚙️  Exécution du script SQL..."
-    mysql -u root < "$INIT_SQL_PATH"
-
-    mysqladmin shutdown
+	mysql -e "CREATE DATABASE IF NOT EXISTS ${MYSQL_DATABASE};"
+	mysql -e "CREATE USER '${MYSQL_DATABAS}'@'%' IDENTIFIED BY '${mysql_password}';"
+	mysql -e "GRANT ALL PRIVILEGES ON ${MYSQL_DATABASE.* TO '${MYSQL_USER}'@'%';"
+	mysql -u root -p${MYSQL_ROOT_PASSWORD} -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '${MYSQL_ROOT_PASSWORD}';
+	mysql -e "FLUSH PRIVILEGES;"
+	mysqladmin -u root -p${MYSQL_ROOT_PASSWORD} shutdown
+else
+    echo "✅ La base de données '${MYSQL_DATABASE}' existe déjà. Aucune action nécessaire."
 fi
 
 echo "🚀 Lancement final de MariaDB..."
-exec mysqld_safe
+exec "$@"

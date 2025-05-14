@@ -1,18 +1,29 @@
 #!/bin/bash
 
+echo "📦 Vérification de l'existence de wp-config.php..."
 if [ ! -f "/var/www/html/wp-config.php" ]; then
+	echo "🔧 wp-config.php non trouvé. Initialisation de WordPress..."
+
 	cd /var/www/html
-	# Download wordpress with wp-cli
+
+	echo "⬇️ Téléchargement de WordPress avec WP-CLI..."
 	wp core download --allow-root
 
-	# Waiting mariadb
-	#Confif the first and second page of wordpress
+	echo "⏳ Attente que MariaDB soit prêt à accepter des connexions..."
+	until mysqladmin --user=${MYSQL_USER} --password=${MYSQL_PASSWORD} --host=mariadb ping; do
+		echo "⌛ En attente de MariaDB sur mariadb..."
+		sleep 2
+	done
+	echo "✅ MariaDB est prêt !"
+
+	echo "⚙️ Configuration du fichier wp-config.php..."
 	wp config create	--dbname=${MYSQL_DATABASE} \
 						--dbuser=${MYSQL_USER} \
 						--dbpass=${MYSQL_PASSWORD} \
-						--dbhost=mariadb \
+						--dbhost=${MYSQL_HOST} \
 						--allow-root
-	#Admin config
+
+	echo "🛠 Installation du site WordPress..."
 	wp core install		--url=${DOMAIN_NAME} \
 						--title=${WP_TITLE} \
 						--admin_user=${WP_ADMIN} \
@@ -20,11 +31,15 @@ if [ ! -f "/var/www/html/wp-config.php" ]; then
 						--admin_email=${WP_ADMIN_EMAIL} \
 						--skip-email \
 						--allow-root
-	#anotherone just for fun
+
+	echo "👤 Création d’un utilisateur supplémentaire (auteur)..."
 	wp user create 		${WP_USER} ${WP_USER_EMAIL} \
 						--user_pass=${WP_USER_PASSWORD} \
 						--role=author \
 						--allow-root
+else
+	echo "✅ wp-config.php déjà présent, aucune installation nécessaire."
+fi
 
-fi;
+echo "🚀 Lancement du conteneur (commande finale : $@)..."
 exec "$@"
