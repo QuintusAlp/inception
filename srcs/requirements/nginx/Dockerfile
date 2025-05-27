@@ -1,6 +1,6 @@
 FROM debian:latest
 
-RUN apt update && apt upgrade && apt install -y nginx openssl
+RUN apt update -y && apt upgrade -y && apt install -y nginx openssl
 
 RUN mkdir -p /var/run/nginx
 

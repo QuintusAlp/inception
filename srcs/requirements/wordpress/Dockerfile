@@ -1,7 +1,7 @@
 FROM debian:latest
 
 # Installer PHP 8.3 + PHP-FPM
-RUN apt update && apt-get  install -y \
+RUN apt update -y && apt-get  install -y \
 	curl \
 	php \
 	php-fpm \

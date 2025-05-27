@@ -1,5 +1,8 @@
 #!/bin/bash
 
+rm -f /var/lib/mysql/tc.log
+mysql_install_db 2> /dev/null
+
 DATABASE_DIR=/var/lib/mysql/${MYSQL_DATABASE}
 
 echo "🔧 Chargement des variables d’environnement..."
