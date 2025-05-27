@@ -1,39 +1,50 @@
-DOCKER_COMPOSE_FILE		= srcs/docker-compose.yml
-DATABASE_VOLUME			= /home/mvan-pee/data/mysql
-WORDPRESS_VOLUME		= /home/mvan-pee/data/wordpress
-DATABASE_DOCKER_VOLUME	= srcs_mariadb
-WORDPRESS_DOCKER_VOLUME	= srcs_wordpress
-MKDIR					= mkdir -p
-RM						= rm -rf
+# Nom du fichier : Makefile
 
-all:	add-host up
+PROJECT_NAME = inception
+COMPOSE = docker compose
+DC_FILE = ./srcs/compose.yml
 
-add-host:
-	@grep -q "qalpesse.42.fr" /etc/hosts || \
-	(echo "🔧 Ajout de qalpesse.42.fr à /etc/hosts..." && \
-	echo "127.0.0.1 qalpesse.42.fr" | sudo tee -a /etc/hosts > /dev/null && \
-	echo "✅ Domaine ajouté.")
+
+.PHONY: up down build start stop restart logs prune fclean re
+
+all: build up
 
 up:
-		sudo $(MKDIR) $(DATABASE_VOLUME)
-		sudo $(MKDIR) $(WORDPRESS_VOLUME)
-		docker-compose -f $(DOCKER_COMPOSE_FILE) up --build -d
+	@$(COMPOSE) -f $(DC_FILE) up -d
+	@echo "✅ Infrastructure démarrée"
 
 down:
-		docker-compose -f $(DOCKER_COMPOSE_FILE) down
+	@$(COMPOSE) -f $(DC_FILE) down
+	@echo "🛑 Infrastructure arrêtée"
+
+build:
+	@$(COMPOSE) -f $(DC_FILE) build
+	@echo "🔧 Services construits"
+
+start:
+	@$(COMPOSE) -f $(DC_FILE) start
+	@echo "▶️ Services démarrés"
 
 stop:
-		docker-compose -f $(DOCKER_COMPOSE_FILE) stop
+	@$(COMPOSE) -f $(DC_FILE) stop
+	@echo "⏸️ Services stoppés"
 
-clean:		down
-		docker container prune --force
+restart:
+	@$(MAKE) stop
+	@$(MAKE) start
+	@echo "🔁 Redémarrage terminé"
 
-fclean:		clean
-		sudo $(RM) $(DATABASE_VOLUME)
-		sudo $(RM) $(WORDPRESS_VOLUME)
-		docker system prune --all --force
-		docker volume rm $(DATABASE_DOCKER_VOLUME) $(WORDPRESS_DOCKER_VOLUME)
+logs:
+	@$(COMPOSE) -f $(DC_FILE) logs -f
 
-re:			fclean all
+prune:
+	@docker system prune -f
+	@echo "🧹 Docker nettoyé"
 
-.PHONY:		all volume up down clean fclean re
+fclean: down
+	@docker volume rm $$(docker volume ls -qf "name=$(PROJECT_NAME)_") 2>/dev/null || true
+	@docker image prune -af
+	@echo "🧼 Tout a été nettoyé"
+
+re: fclean build up
+	@echo "♻️ Projet reconstruit depuis zéro"
