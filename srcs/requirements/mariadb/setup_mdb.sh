@@ -1,40 +1,37 @@
 #!/bin/bash
+MYSQL_PASSWORD=$(cat /run/secrets/mysql_password)
+MYSQL_ROOT_PASSWORD=$(cat /run/secrets/mysql_root_password)
+# Chemin vers la base système MariaDB
+DB_SYSTEM_DIR="/var/lib/mysql/mysql"
 
-rm -f /var/lib/mysql/tc.log
-mysql_install_db 2> /dev/null
+echo "🔧 Vérification de l’état de MariaDB..."
 
-DATABASE_DIR=/var/lib/mysql/${MYSQL_DATABASE}
+if [ ! -d "$DB_SYSTEM_DIR" ]; then
+    echo "📦 Initialisation de MariaDB..."
+	mysql_install_db --user=mysql --datadir=/var/lib/mysql --auth-root-authentication-method=normal --skip-test-db
 
-echo "🔧 Chargement des variables d’environnement..."
-echo "🔸 SQL_DATABASE       = ${MYSQL_DATABASE}"
-echo "🔸 SQL_USER           = ${MYSQL_USER}"
-echo "🔸 SQL_PASSWORD       = ${MYSQL_PASSWORD}"
-echo "🔸 SQL_ROOT_PASSWORD  = ${MYSQL_ROOT_PASSWORD}"
-if [ ! -d "$DATABASE_DIR" ]; then
+    echo "🚀 Démarrage temporaire de MariaDB..."
+    mysqld_safe --datadir=/var/lib/mysql &
 
-	# Launch mariadb in background
-	echo "dataBase not found... creation of ${MYSQL_DATABASE}"
-	/usr/bin/mysqld_safe --datadir=/var/lib/mysql &
+    # Attente que le serveur soit prêt
+    until mysqladmin ping --silent; do
+        echo "⏳ En attente du démarrage de MariaDB..."
+        sleep 2
+    done
 
-	until mysqladmin ping ; do
-		echo "waiting for mysql_safe launche"
-		sleep 2
-	done
-
-	mysql -u root << EOF
-
-	CREATE DATABASE IF NOT EXISTS ${MYSQL_DATABASE};
-	ALTER USER 'root'@'localhost' IDENTIFIED BY '${MYSQL_ROOT_PASSWORD}';
-	DELETE FROM mysql.user WHERE user='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1');
-	DELETE FROM mysql.user WHERE user='';
-	CREATE USER '${MYSQL_USER}'@'%' IDENTIFIED BY '${MYSQL_PASSWORD}';
-	GRANT ALL PRIVILEGES ON ${MYSQL_DATABASE}.* TO '${MYSQL_USER}'@'%';
-	FLUSH PRIVILEGES;
-
+    echo "🔐 Configuration des utilisateurs..."
+    mysql -u root <<EOF
+CREATE DATABASE IF NOT EXISTS \`${MYSQL_DATABASE}\`;
+CREATE USER IF NOT EXISTS '${MYSQL_USER}'@'%' IDENTIFIED BY '${MYSQL_PASSWORD}';
+GRANT ALL PRIVILEGES ON \`${MYSQL_DATABASE}\`.* TO '${MYSQL_USER}'@'%';
+ALTER USER 'root'@'localhost' IDENTIFIED BY '${MYSQL_ROOT_PASSWORD}';
+GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' IDENTIFIED BY '${MYSQL_ROOT_PASSWORD}' WITH GRANT OPTION;
+FLUSH PRIVILEGES;
 EOF
-	# Stop mariadb => Restart it
-	killall mysqld 2> /dev/null
-	echo "data base created"
 
+    echo "🛑 Arrêt temporaire de MariaDB..."
+	mysqladmin -u root -p"${MYSQL_ROOT_PASSWORD}" shutdown
 fi
-exec "$@"
+
+echo "✅ Lancement final de MariaDB"
+/usr/bin/mysqld_safe --datadir=/var/lib/mysql

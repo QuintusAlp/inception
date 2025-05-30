@@ -1,5 +1,8 @@
 #!/bin/bash
-
+MYSQL_PASSWORD=$(cat /run/secrets/mysql_password)
+MYSQL_ROOT_PASSWORD=$(cat /run/secrets/mysql_root_password)
+WP_ADMIN_PASSWORD=$(cat /run/secrets/wp_admin_password)
+WP_USER_PASSWORD=$(cat /run/secrets/wp_user_password)
 echo "📦 Vérification de l'existence de wp-config.php..."
 if [ ! -f "/var/www/html/wp-config.php" ]; then
 	echo "🔧 wp-config.php non trouvé. Initialisation de WordPress..."
@@ -10,10 +13,11 @@ if [ ! -f "/var/www/html/wp-config.php" ]; then
 	wp core download --allow-root
 
 	echo "⏳ Attente que MariaDB soit prêt à accepter des connexions..."
-	until mysqladmin --user=${MYSQL_USER} --password=${MYSQL_PASSWORD} --host=mariadb ping; do
-		echo "⌛ En attente de MariaDB sur mariadb..."
-		sleep 2
+	until mysqladmin --user="$MYSQL_USER" --password="$MYSQL_PASSWORD" --host=mariadb ping 2>/dev/null | grep "mysqld is alive" > /dev/null; do
+    	echo "⌛ En attente de MariaDB sur mariadb..."
+    	sleep 5
 	done
+
 	echo "✅ MariaDB est prêt !"
 
 	echo "⚙️ Configuration du fichier wp-config.php..."
